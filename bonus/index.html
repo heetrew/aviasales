@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Правда или Ложь</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --container: 480px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: transparent;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 0;
+        }
+
+        .bg-wrap {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background-color: var(--bg);
+        }
+        .bg-layer {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+        .bg-layer.active { opacity: 1; }
+
+        .app-container {
+            width: 100%;
+            max-width: var(--container);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 12px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .header h1 { font-size: 24px; font-weight: 700; color: var(--primary); }
+        .header p { font-size: 14px; color: #6b7280; margin-top: 4px; }
+
+        .card-area {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 48px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 360px;
+            min-height: 360px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 32px;
+            text-align: center;
+            cursor: grab;
+            user-select: none;
+            will-change: transform;
+            transform-origin: 50% 100%;
+            touch-action: none;
+        }
+
+        .card-icon { 
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+        }
+
+        .card:active { cursor: grabbing; }
+
+        .card p { font-size: 20px; line-height: 1.4; font-weight: 500; }
+
+        .card-badge {
+            position: absolute;
+            top: 24px;
+            font-size: 28px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 4px solid;
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .badge-yes { 
+            color: var(--success); 
+            border-color: var(--success); 
+            right: 24px; 
+            transform: rotate(15deg); 
+        }
+        
+        .badge-no { 
+            color: var(--danger); 
+            border-color: var(--danger); 
+            left: 24px; 
+            transform: rotate(-15deg); 
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-evenly;
+            margin-top: 32px;
+            padding-bottom: 24px;
+        }
+
+        .btn {
+            border: none;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--card-bg);
+        }
+
+        .btn:active { transform: scale(0.9); }
+        .btn-no { color: var(--danger); }
+        .btn-yes { color: var(--success); }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .result-content {
+            height: 100%;
+            width: 100%;
+            max-width: var(--container);
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        @media (min-width: 600px) {
+            .result-content {
+                max-width: 600px;
+                height: auto;
+                border-radius: 24px;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                padding: 40px;
+            }
+        }
+
+        .result-title { font-size: 36px; font-weight: 800; margin-bottom: 16px; }
+        .result-title.correct { color: var(--success); }
+        .result-title.incorrect { color: var(--danger); }
+        .result-desc { font-size: 18px; line-height: 1.5; color: #4b5563; margin-bottom: 20px; }
+        
+        .ad-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0ea5e9;
+            margin-bottom: 40px;
+            background: #f0f9ff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px dashed #bae6fd;
+            max-width: 90%;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 9999px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+        }
+        .btn-primary:hover { background: #2563eb; }
+
+        .mechanics-hint {
+            text-align: center;
+            font-size: 14px;
+            color: #fff;
+            opacity: 0.8;
+            animation: pulse 2s infinite;
+        }
+
+        #trail-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 99999;
+            overflow: hidden;
+        }
+
+        .trail {
+            position: absolute;
+            color: var(--primary);
+            font-size: 24px;
+            font-weight: 800;
+            pointer-events: none;
+            user-select: none;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            will-change: transform, opacity;
+        }
+
+        .loader {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+        .loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .loader-text {
+            font-size: 20px; font-weight: 600; color: var(--primary); margin-top: 20px; text-align: center; padding: 0 20px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="bg-wrap">
+        <div class="bg-layer active"></div>
+        <div class="bg-layer"></div>
+    </div>
+    <div id="trail-container"></div>
+    <main class="app-container">
+        <header class="header">
+            <h1>Правда или Ложь?</h1>
+            <p id="progress-text">Вопрос 1 из 5</p>
+        </header>
+
+        <section class="card-area" id="card-area">
+        </section>
+
+        <p class="mechanics-hint">Свайп влево - Нет, вправо - Да</p>
+        <p class="mechanics-hint">Или жми на кнопки</p>
+
+        <nav class="controls">
+            <button id="btn-no" class="btn btn-no" aria-label="Ложь">✖</button>
+            <button id="btn-yes" class="btn btn-yes" aria-label="Правда">✔</button>
+        </nav>
+
+        <div id="result-overlay" class="overlay">
+            <div class="result-content">
+                <h2 id="result-title" class="result-title"></h2>
+                <p id="result-desc" class="result-desc"></p>
+                <div id="ad-text" class="ad-text"></div>
+                <button id="btn-next" class="btn-primary">Понятно</button>
+            </div>
+        </div>
+        
+        <div id="finish-overlay" class="overlay">
+            <div class="result-content">
+                <h2 class="result-title correct">Отлично!</h2>
+                <p id="finish-desc" class="result-desc">Вы прошли все вопросы.</p>
+                <div class="ad-text">Хватит играть! Пора планировать путешествие. Ищите самые дешевые билеты на Авиасейлс!</div>
+                <button id="btn-restart" class="btn-primary">Начать заново</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="loader" class="loader">
+        <div class="btn btn-primary" style="width: 60px; height: 60px; padding: 0; display: flex; align-items: center; justify-content: center; animation: spin 1s linear infinite;">✈</div>
+        <p id="loader-text" class="loader-text">Заправляем самолет...</p>
+    </div>
+
+    <script>
+        const DATA = {
+            questions: [
+                {
+                text: "Самая длинная река в мире — Амазонка?",
+                answer: true,
+                explanation: "По современным исследованиям Амазонка признана самой длинной рекой, обгоняя Нил.",
+                bg: "https://divoworld.ru/wp-content/uploads/2019/03/tmp-1447072894.jpg",
+                style: "background-color: #e0f7fa; color: #006064; border-radius: 40px 4px 40px 4px; border: 4px solid #006064;",
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#006064" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2-2 2-2 4 0s2 2 4 0 2-2 4 0 2 2 4 0 2-2 4 0"/></svg>'
+                },
+                {
+                text: "Молния никогда не бьет в одно и то же место дважды?",
+                answer: false,
+                explanation: "Молния часто бьет в одно и то же место, особенно если это высокий объект.",
+                bg: "https://huxley.media/wp-content/uploads/2019/11/molniya-111.jpg",
+                style: "background-color: #263238; color: #eceff1; border-radius: 10px; border: 2px dashed #ffca28;",
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#ffca28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+                },
+                {
+                text: "Акулы не болеют раком?",
+                answer: false,
+                explanation: "Это миф. Ученые не раз находили раковые опухоли у многих видов акул.",
+                bg: "https://upload.wikimedia.org/wikipedia/commons/5/56/White_shark.jpg",
+                style: "background-color: #00695c; color: #e0f2f1; border-radius: 15px; border: 4px double #80cbc4;",
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#80cbc4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>'
+                },
+                {
+                text: "Вода на вершине Эвереста кипит при 100°C?",
+                answer: false,
+                explanation: "Из-за низкого давления на Эвересте вода закипает уже при 71°C.",
+                bg: "https://s0.rbk.ru/v6_top_pics/media/img/6/77/347277761092776.webp",
+                style: "background-color: #eceff1; color: #455a64; border-radius: 2px 20px 2px 20px; border: 3px solid #b0bec5;",
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#455a64" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>'
+                },
+                {
+                text: "В космосе нельзя плакать так же, как на Земле?",
+                answer: true,
+                explanation: "Из-за невесомости слезы не стекают вниз, а скапливаются на глазах в виде шарика.",
+                bg: "https://s0.rbk.ru/v6_top_pics/media/img/6/76/756286803535766.jpg",
+                style: "background-color: #311b92; color: #d1c4e9; border-radius: 25px; border: 2px solid #7e57c2;",
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#d1c4e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/></svg>'
+                }
+            ],
+            ads: [
+                "Кстати, самые дешевые авиабилеты всегда ищите на Авиасейлс.",
+                "Факт: билеты выгоднее всего покупать через Авиасейлс!",
+                "Неважно, правда это или ложь, но Авиасейлс — лучший поиск авиабилетов.",
+                "Пока вы читаете это, кто-то бронирует дешевый перелет на Авиасейлс.",
+                "Ответили? Отлично! Теперь бегом на Авиасейлс за билетами в отпуск."
+            ],
+            loading: [
+                "Загружаем факты со всего света...",
+                "Ищем самые дешевые пиксели...",
+                "Проверяем давление в шинах шасси...",
+                "Спрашиваем у пилота дорогу..."
+            ]
+            };
+
+        const Utils = {
+            shuffle: (array) => {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            },
+            preloadImages: (urls) => {
+                return Promise.all(urls.map(url => new Promise(resolve => {
+                    const img = new Image();
+                    img.src = url;
+                    img.onload = img.onerror = resolve;
+                })));
+            }
+        };
+
+        // Optimize creation and destruction of cursor trail particles
+        class ParticlePool {
+            constructor(container, size = 20) {
+                this.container = container;
+                this.pool = [];
+                this.active = [];
+                
+                for (let i = 0; i < size; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'trail';
+                    el.textContent = '?';
+                    el.style.opacity = 0;
+                    this.container.appendChild(el);
+                    this.pool.push(el);
+                }
+            }
+
+            spawn(x, y) {
+                if (this.pool.length === 0) {
+                    const oldest = this.active.shift();
+                    if (oldest) this.pool.push(oldest);
+                }
+
+                const particle = this.pool.pop();
+                this.active.push(particle);
+
+                particle.style.transition = 'none';
+                particle.style.transform = `translate(${x}px, ${y}px) scale(1) rotate(0deg)`;
+                particle.style.opacity = 0.8;
+
+                void particle.offsetWidth;
+
+                requestAnimationFrame(() => {
+                    particle.style.transition = 'transform 0.7s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.7s ease';
+                    particle.style.transform = `translate(${x}px, ${y + 50}px) scale(0.3) rotate(25deg)`;
+                    particle.style.opacity = 0;
+                });
+
+                setTimeout(() => {
+                    if (this.active.includes(particle)) {
+                        this.active = this.active.filter(p => p !== particle);
+                        this.pool.push(particle);
+                    }
+                }, 400);
+            }
+        }
+
+        class Game {
+            constructor() {
+                this.state = {
+                    questions: [],
+                    ads: [],
+                    loading: [],
+                    currentIndex: 0,
+                    isDragging: false,
+                    startX: 0,
+                    currentX: 0,
+                    correctCount: 0
+                };
+                
+                this.dom = this.cacheDOM();
+                this.trailPool = new ParticlePool(this.dom.trailContainer);
+                this.threshold = window.innerWidth * 0.25;
+                
+                this.bindEvents();
+                this.init();
+            }
+
+            cacheDOM() {
+                return {
+                    cardArea: document.getElementById('card-area'),
+                    progressText: document.getElementById('progress-text'),
+                    resultOverlay: document.getElementById('result-overlay'),
+                    resultTitle: document.getElementById('result-title'),
+                    resultDesc: document.getElementById('result-desc'),
+                    adText: document.getElementById('ad-text'),
+                    finishOverlay: document.getElementById('finish-overlay'),
+                    finishDesc: document.getElementById('finish-desc'),
+                    btnNo: document.getElementById('btn-no'),
+                    btnYes: document.getElementById('btn-yes'),
+                    btnNext: document.getElementById('btn-next'),
+                    btnRestart: document.getElementById('btn-restart'),
+                    trailContainer: document.getElementById('trail-container'),
+                    loader: document.getElementById('loader'),
+                    loaderText: document.getElementById('loader-text'),
+                    bgLayers: document.querySelectorAll('.bg-layer'),
+                };
+            }
+
+            async init() {
+                this.dom.loaderText.textContent = DATA.loading[Math.floor(Math.random() * DATA.loading.length)];
+                this.state.questions = Utils.shuffle(DATA.questions);
+                this.state.ads = DATA.ads
+                
+                try {
+                    await Utils.preloadImages(this.state.questions.map(q => q.bg));
+                } catch (e) {
+                    console.warn("Some images failed to load", e);
+                }
+
+                setTimeout(() => {
+                    this.dom.loader.classList.add('hidden');
+                    this.renderCard();
+                }, 500);
+            }
+
+            bindEvents() {
+                const onStart = this.onStart.bind(this);
+                const onMove = this.onMove.bind(this);
+                const onEnd = this.onEnd.bind(this);
+
+                document.addEventListener('mousedown', onStart);
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onEnd);
+                
+                document.addEventListener('touchstart', onStart, {passive: true});
+                document.addEventListener('touchmove', onMove, {passive: true});
+                document.addEventListener('touchend', onEnd);
+
+                this.dom.btnNo.addEventListener('click', () => this.triggerSwipe('left'));
+                this.dom.btnYes.addEventListener('click', () => this.triggerSwipe('right'));
+                
+                this.dom.btnNext.addEventListener('click', () => {
+                    this.dom.resultOverlay.classList.remove('active');
+                    this.state.currentIndex++;
+                    this.renderCard();
+                });
+                
+                this.dom.btnRestart.addEventListener('click', () => this.restart());
+            }
+
+            restart() {
+                this.dom.finishOverlay.classList.remove('active');
+                this.state.currentIndex = 0;
+                this.state.questions = Utils.shuffle(this.state.questions);
+                this.renderCard();
+            }
+
+            showResult(userAnswer) {
+                const question = this.state.questions[this.state.currentIndex];
+                const isCorrect = userAnswer === question.answer;
+
+                if (isCorrect) {
+                    this.state.correctCount++;
+                }
+
+                this.dom.resultTitle.textContent = isCorrect ? 'Верно!' : 'Ой, ошибка!';
+                this.dom.resultTitle.className = `result-title ${isCorrect ? 'correct' : 'incorrect'}`;
+                this.dom.resultDesc.textContent = question.explanation;
+                
+                const randomAd = this.state.ads[Math.floor(Math.random() * this.state.ads.length)];
+                this.dom.adText.textContent = randomAd;
+                
+                this.dom.resultOverlay.classList.add('active');
+            }
+
+            renderCard() {
+                if (this.state.currentIndex >= this.state.questions.length) {
+                    this.dom.finishOverlay.classList.add('active');
+                    this.dom.finishDesc.textContent = `Вы прошли все вопросы. Правильных ответов: ${this.state.correctCount} из ${this.state.questions.length}.`;
+                    return;
+                }
+
+                const question = this.state.questions[this.state.currentIndex];
+                this.dom.progressText.textContent = `Вопрос ${this.state.currentIndex + 1} из ${this.state.questions.length}`;
+                
+                this.updateBackground(question.bg);
+
+                const card = document.createElement('article');
+                card.className = 'card';
+                card.style = question.style;
+                card.innerHTML = `
+                    <div class="card-icon">${question.icon}</div>
+                    <div class="card-badge badge-yes">Да</div>
+                    <div class="card-badge badge-no">Нет</div>
+                    <p>${question.text}</p>
+                `;
+                
+                this.dom.cardArea.innerHTML = '';
+                this.dom.cardArea.appendChild(card);
+                this.state.currentCard = card;
+            }
+
+            updateBackground(url) {
+                const idx = this.state.currentIndex;
+                const nextLayer = this.dom.bgLayers[(idx + 1) % 2];
+                const currentLayer = this.dom.bgLayers[idx % 2];
+
+                nextLayer.style.backgroundImage = `url('${url}')`;
+                nextLayer.classList.add('active');
+                currentLayer.classList.remove('active');
+            }
+
+            onStart(e) {
+                const card = e.target.closest('.card');
+                if (!card || card !== this.state.currentCard) return;
+                
+                this.state.isDragging = true;
+                this.state.startX = e.type.includes('mouse') ? e.pageX : e.touches[0].clientX;
+                this.state.currentCard.style.transition = 'none';
+            }
+
+            onMove(e) {
+                const clientX = e.type.includes('mouse') ? e.pageX : (e.touches[0] ? e.touches[0].clientX : 0);
+                const clientY = e.type.includes('mouse') ? e.pageY : (e.touches[0] ? e.touches[0].clientY : 0);
+
+                this.trailPool.spawn(clientX - 16, clientY - 16);
+
+                if (!this.state.isDragging || !this.state.currentCard) return;
+
+                const deltaX = clientX - this.state.startX;
+                this.state.currentX = deltaX;
+
+                requestAnimationFrame(() => {
+                    if (!this.state.isDragging) return;
+
+                    const rotate = deltaX * 0.05;
+                    
+                    if (this.state.currentCard) {
+                        this.state.currentCard.style.transform = `translateX(${deltaX}px) rotate(${rotate}deg)`;
+                        this.updateBadges(deltaX);
+                    }
+                });
+            }
+
+            updateBadges(deltaX) {
+                const badgeYes = this.state.currentCard.querySelector('.badge-yes');
+                const badgeNo = this.state.currentCard.querySelector('.badge-no');
+                
+                const opacity = Math.min(Math.abs(deltaX) / this.threshold, 1);
+                
+                if (deltaX > 0) {
+                    badgeYes.style.opacity = opacity;
+                    badgeNo.style.opacity = 0;
+                } else {
+                    badgeNo.style.opacity = opacity;
+                    badgeYes.style.opacity = 0;
+                }
+            }
+
+            onEnd() {
+                if (!this.state.isDragging || !this.state.currentCard) return;
+                this.state.isDragging = false;
+                
+                const { currentX } = this.state;
+                
+                if (currentX > this.threshold) {
+                    this.triggerSwipe('right');
+                } else if (currentX < -this.threshold) {
+                    this.triggerSwipe('left');
+                } else {
+                    this.resetCardPosition();
+                }
+                this.state.currentX = 0;
+            }
+
+            resetCardPosition() {
+                this.state.currentCard.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                this.state.currentCard.style.transform = 'translateX(0) rotate(0)';
+                this.state.currentCard.querySelector('.badge-yes').style.opacity = 0;
+                this.state.currentCard.querySelector('.badge-no').style.opacity = 0;
+            }
+
+            triggerSwipe(direction) {
+                if (!this.state.currentCard) return;
+                
+                const targetX = direction === 'right' ? window.innerWidth : -window.innerWidth;
+                const rotate = direction === 'right' ? 30 : -30;
+                
+                this.state.currentCard.style.transition = 'transform 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53)';
+                this.state.currentCard.style.transform = `translateX(${targetX}px) rotate(${rotate}deg)`;
+                
+                const userAnswer = direction === 'right';
+                this.state.currentCard = null;
+                
+                setTimeout(() => this.showResult(userAnswer), 300);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new Game();
+        });
+    </script>
+</body>
+</html>
